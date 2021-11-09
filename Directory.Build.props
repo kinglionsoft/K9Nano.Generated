@@ -3,7 +3,7 @@
     <LangVersion>Latest</LangVersion>
     <Authors>K9</Authors>
     <Version>0.0.1</Version>
-    <Description>A lightweight source generator component.</Description>
+    <Description>A generic Utils created by Source Generator created by Source Generator</Description>
     <PackageProjectUrl>https://github.com/kinglionsoft/K9Nano.Generated</PackageProjectUrl>
     <RepositoryUrl>https://github.com/kinglionsoft/K9Nano.Generated</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
