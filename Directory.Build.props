@@ -2,7 +2,7 @@
   <PropertyGroup>
     <LangVersion>Latest</LangVersion>
     <Authors>K9</Authors>
-    <Version>0.0.1</Version>
+    <Version>0.0.4</Version>
     <Description>A generic Utils created by Source Generator created by Source Generator</Description>
     <PackageProjectUrl>https://github.com/kinglionsoft/K9Nano.Generated</PackageProjectUrl>
     <RepositoryUrl>https://github.com/kinglionsoft/K9Nano.Generated</RepositoryUrl>

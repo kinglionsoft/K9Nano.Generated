@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using K9Nano.Generated;
 
-namespace EnumTest
+namespace GeneratorTest
 {
     [DescriptionGenerator]
     public enum ETest

@@ -1,11 +1,10 @@
 ﻿using System;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace K9Nano.Generated
 {
@@ -29,11 +28,11 @@ namespace K9Nano.Generated
         public void Initialize(GeneratorInitializationContext context)
         {
 #if DEBUG
-            //if (!Debugger.IsAttached)
-            //{
-            //    Debugger.Launch();
-            //}
-            //Debug.WriteLine("Initalize code generator");
+            if (!Debugger.IsAttached)
+            {
+                Debugger.Launch();
+            }
+            Debug.WriteLine("Initalize code generator");
 #endif
             // Register a syntax receiver that will be created for each generation pass
             context.RegisterForSyntaxNotifications(() => new SyntaxReceiver());
@@ -46,73 +45,108 @@ namespace K9Nano.Generated
 
             // retreive the populated receiver 
             if (!(context.SyntaxReceiver is SyntaxReceiver receiver)) return;
+            var sb = new StringBuilder();
+            sb.AppendLine(@"
+using System;
+using System.Text;
+using System.Collections.Generic;
 
+namespace K9Nano.Generated
+{
+    public static class EnumExtensions
+    {"
+            );
 
             foreach (var enumDeclarationSyntax in receiver.CandidateClasses)
             {
-                var className = enumDeclarationSyntax.Identifier.ValueText;
                 var namespaceName = GetNamespace(enumDeclarationSyntax.Parent);
-                var sourceText = Generate(namespaceName, enumDeclarationSyntax);
-                var fileName = namespaceName.Replace('.', '_') + '_' + className;
-                context.AddSource($"{fileName}Generated", sourceText);
+                if (namespaceName == null)
+                {
+                    throw new Exception($"Can not find namespace of {enumDeclarationSyntax.Identifier.ValueText}");
+                }
+                var methodSourceText = GenerateMethod(namespaceName, enumDeclarationSyntax);
+                sb.AppendLine(methodSourceText);
             }
+
+            sb.AppendLine(@"
+    }
+}
+");
+            var sourceText = sb.ToString();
+            context.AddSource("EnumExtensionsGenerated", sourceText);
         }
 
-        private static string GetNamespace(SyntaxNode node)
+        private static string? GetNamespace(SyntaxNode? node)
         {
             var ns = node;
             while (true)
             {
-                if (ns is NamespaceDeclarationSyntax namespaceDeclarationSyntax)
+                if (ns == null) return null;
+
+                if (ns is BaseNamespaceDeclarationSyntax namespaceDeclarationSyntax)
                 {
-                    if (namespaceDeclarationSyntax.Name is IdentifierNameSyntax identifierNameSyntax)
-                    {
-                        return identifierNameSyntax.Identifier.ToString();
-                    }
+                    return namespaceDeclarationSyntax.Name.ToString();
                 }
 
                 ns = ns.Parent;
-                if (ns == null) return null;
             }
         }
 
-        private static string Generate(string namespaceName, EnumDeclarationSyntax enumDeclarationSyntax)
+        private static string GenerateMethod(string namespaceName, EnumDeclarationSyntax enumDeclarationSyntax)
         {
             var typeName = namespaceName + '.' + enumDeclarationSyntax.Identifier.ValueText;
 
-            var sb = new StringBuilder();
-            sb.AppendLine($@"
-using System;
-using System.Text;
+            var fields = enumDeclarationSyntax.Members.Select(member =>
+                {
+                    var name = member.Identifier.Text;
 
-namespace K9Nano.Generated
+                    var descriptionAttribute = member.AttributeLists
+                        .SelectMany(a => a.Attributes)
+                        .FirstOrDefault(a => a.Name is IdentifierNameSyntax n && n.Identifier.Text == "Description");
+                    var description = descriptionAttribute?.ArgumentList?.Arguments.FirstOrDefault()?.ToString()
+                                      ?? $"\"{name}\"";
+                    return new EnumFieldMetadata(name, description);
+                })
+                .ToList();
+
+            var sb = new StringBuilder();
+
+            // GetDescription
+            sb.AppendLine($@"
+public static string GetDescription(this {typeName} obj)
 {{
-    public static class EnumExtensions
+    return obj switch
     {{
-        public static string GetDescription(this {typeName} obj)
-        {{
-            return obj switch
-            {{
 "
             );
 
-            foreach (var member in enumDeclarationSyntax.Members)
+            foreach (var f in fields)
             {
-                var name = member.Identifier.Text;
-                var description = member.AttributeLists
-                    .SelectMany(a => a.Attributes)
-                    .FirstOrDefault(a => a.Name is IdentifierNameSyntax n && n.Identifier.Text == "Description");
-                var text = description?.ArgumentList?.Arguments.FirstOrDefault()?.ToString()
-                           ?? $"\"{name}\"";
-
-                sb.AppendLine($"{typeName}.{name} => {text},");
+                sb.AppendLine($"{typeName}.{f.Name} => {f.Description},");
             }
 
             sb.AppendLine(@"                
-                _ => obj.ToString()
-            };
-        }
-    }
+        _ => obj.ToString()
+    };
+}"
+            );
+
+            sb.AppendLine($@"
+
+public static IEnumerable<KeyValuePair<int, string>> GetValuesAndDescriptions(this {typeName} obj)
+{{
+    return new KeyValuePair<int, string>[]
+    {{
+"
+            );
+
+            foreach (var f in fields)
+            {
+                sb.AppendLine($"new ((int){typeName}.{f.Name}, {f.Description}),");
+            }
+
+            sb.AppendLine(@"
+    };
 }"
             );
 
@@ -139,6 +173,19 @@ namespace K9Nano.Generated
                 {
                     CandidateClasses.Add(classDeclarationSyntax);
                 }
+            }
+        }
+
+        private class EnumFieldMetadata
+        {
+            public string Name { get; }
+            
+            public string Description { get; }
+
+            public EnumFieldMetadata(string name, string description)
+            {
+                Name = name;
+                Description = description;
             }
         }
     }
