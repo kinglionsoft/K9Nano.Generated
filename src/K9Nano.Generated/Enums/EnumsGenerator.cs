@@ -113,42 +113,34 @@ namespace K9Nano.Generated
 
             // GetDescription
             sb.AppendLine($@"
-public static string GetDescription(this {typeName} obj)
-{{
-    return obj switch
-    {{
-"
-            );
+        public static string GetDescription(this {typeName} obj)
+        {{
+            return obj switch
+            {{");
 
             foreach (var f in fields)
             {
-                sb.AppendLine($"{typeName}.{f.Name} => {f.Description},");
+                sb.AppendLine($"                {typeName}.{f.Name} => {f.Description},");
             }
 
-            sb.AppendLine(@"                
-        _ => obj.ToString()
-    };
-}"
-            );
+            sb.AppendLine(@"                _ => obj.ToString()
+            };
+        }");
 
+            // GetValuesAndDescriptions
             sb.AppendLine($@"
-
-public static IEnumerable<KeyValuePair<int, string>> GetValuesAndDescriptions(this {typeName} obj)
-{{
-    return new KeyValuePair<int, string>[]
-    {{
-"
-            );
+        public static IEnumerable<KeyValuePair<int, string>> GetValuesAndDescriptions(this {typeName} obj)
+        {{
+            return new KeyValuePair<int, string>[]
+            {{");
 
             foreach (var f in fields)
             {
-                sb.AppendLine($"new ((int){typeName}.{f.Name}, {f.Description}),");
+                sb.AppendLine($"                new ((int){typeName}.{f.Name}, {f.Description}),");
             }
 
-            sb.AppendLine(@"
-    };
-}"
-            );
+            sb.AppendLine(@"            };
+        }");
 
             var sourceText = sb.ToString();
             return sourceText;
